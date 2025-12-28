@@ -20,8 +20,16 @@
     "transcripts",
     "explorer"
   ],
-  "author": "",
+  "author": "Alex Trejtnar",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/altre-cz/vibecoding-chronicle.git"
+  },
+  "bugs": {
+    "url": "https://github.com/altre-cz/vibecoding-chronicle/issues"
+  },
+  "homepage": "https://github.com/altre-cz/vibecoding-chronicle#readme",
   "type": "module",
   "dependencies": {
     "better-sqlite3": "^11.7.0",
