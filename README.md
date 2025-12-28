@@ -1,22 +1,28 @@
 # Vibecoding Chronicle
 
-A beautiful, interactive explorer for AI coding assistant transcripts. Works with Claude Code, Codex CLI, and Gemini CLI.
+> **Ever lost that perfect solution Claude gave you last week?** This tool helps you find it.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/node-18+-green.svg)
 
-## What is this?
+![Vibecoding Chronicle Screenshot](docs/screenshot.png)
 
-When you use AI coding assistants like Claude Code, Codex CLI, or Gemini CLI, they save conversation logs locally on your machine. These logs contain valuable knowledge - solutions to problems, architectural decisions, debugging sessions, and lessons learned.
+## The Problem
 
-**Vibecoding Chronicle** helps you:
+You've been coding with AI assistants for months. Somewhere in those hundreds of conversations is the exact solution you need right now - that clever regex, that Docker fix, that authentication pattern. But where?
 
-- **Browse & Search** - Easily find that conversation where you solved a tricky bug
-- **Organize** - Tag important messages for future reference (e.g., "Best Practice", "Troubleshooting", "Lesson Learned")
-- **Filter** - Narrow down by date, project, AI tool, or tags
-- **Learn** - Review past sessions to remember how you solved similar problems
+AI coding assistants like **Claude Code**, **Codex CLI**, and **Gemini CLI** save conversation logs locally, but they're just raw files scattered across your system. Good luck finding anything.
 
-All data stays local on your machine. No cloud, no accounts, no tracking.
+## The Solution
+
+**Vibecoding Chronicle** turns your AI conversation history into a searchable, organized knowledge base:
+
+- **Full-Text Search** - Find any conversation by searching message content
+- **Tag Important Moments** - Mark solutions as "Best Practice", "Troubleshooting", or custom tags
+- **Filter Everything** - By date, project, AI tool, or tags
+- **All Local** - Your data stays on your machine. No cloud, no accounts, no tracking.
+
+It's like having a personal wiki of every problem you've solved with AI.
 
 ## Features
 
