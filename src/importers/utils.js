@@ -65,25 +65,42 @@ export function maskSecrets(text) {
 
 /**
  * Parse a JSONL file into array of objects
+ * @returns {{ messages: Array, errors: number }} Parsed messages and error count
  */
 export function parseJsonlFile(filePath) {
   const messages = [];
+  let errors = 0;
+
   try {
     const content = readFileSync(filePath, 'utf-8');
-    for (const line of content.split('\n')) {
-      const trimmed = line.trim();
+    const lines = content.split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
       if (trimmed) {
         try {
           messages.push(JSON.parse(trimmed));
-        } catch {
-          // Skip invalid JSON lines
+        } catch (err) {
+          errors++;
+          if (errors === 1) {
+            console.warn(`  ⚠️  Parse errors in ${filePath.split('/').pop()}:`);
+          }
+          if (errors <= 3) {
+            console.warn(`      Line ${i + 1}: ${err.message}`);
+          }
         }
       }
     }
-  } catch {
-    // File read error
+
+    if (errors > 3) {
+      console.warn(`      ... and ${errors - 3} more errors`);
+    }
+  } catch (err) {
+    console.error(`  ❌ Failed to read file: ${filePath.split('/').pop()} - ${err.message}`);
+    return { messages: [], errors: 1 };
   }
-  return messages;
+
+  return { messages, errors };
 }
 
 /**
@@ -93,7 +110,8 @@ export function parseJsonFile(filePath) {
   try {
     const content = readFileSync(filePath, 'utf-8');
     return JSON.parse(content);
-  } catch {
+  } catch (err) {
+    console.error(`  ❌ Failed to parse JSON: ${filePath.split('/').pop()} - ${err.message}`);
     return null;
   }
 }

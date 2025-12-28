@@ -13,31 +13,31 @@
                         :class="datePreset === 'today' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' : 'hover:bg-gray-50 dark:hover:bg-slate-700'"
                         class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors">
                     <span>Today</span>
-                    <span class="text-xs bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 rounded-full min-w-[1.5rem] text-center" x-text="dateCounts.today"></span>
+                    <span class="text-xs bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 rounded-full min-w-[1.5rem] text-center" x-text="dynamicDateCounts.today"></span>
                 </button>
                 <button @click="setDatePreset('yesterday')"
                         :class="datePreset === 'yesterday' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' : 'hover:bg-gray-50 dark:hover:bg-slate-700'"
                         class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors">
                     <span>Yesterday</span>
-                    <span class="text-xs bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 rounded-full min-w-[1.5rem] text-center" x-text="dateCounts.yesterday"></span>
+                    <span class="text-xs bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 rounded-full min-w-[1.5rem] text-center" x-text="dynamicDateCounts.yesterday"></span>
                 </button>
                 <button @click="setDatePreset('last7')"
                         :class="datePreset === 'last7' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' : 'hover:bg-gray-50 dark:hover:bg-slate-700'"
                         class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors">
                     <span>Last 7 days</span>
-                    <span class="text-xs bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 rounded-full min-w-[1.5rem] text-center" x-text="dateCounts.last7"></span>
+                    <span class="text-xs bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 rounded-full min-w-[1.5rem] text-center" x-text="dynamicDateCounts.last7"></span>
                 </button>
                 <button @click="setDatePreset('last30')"
                         :class="datePreset === 'last30' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' : 'hover:bg-gray-50 dark:hover:bg-slate-700'"
                         class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors">
                     <span>Last 30 days</span>
-                    <span class="text-xs bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 rounded-full min-w-[1.5rem] text-center" x-text="dateCounts.last30"></span>
+                    <span class="text-xs bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 rounded-full min-w-[1.5rem] text-center" x-text="dynamicDateCounts.last30"></span>
                 </button>
                 <button @click="setDatePreset('thisMonth')"
                         :class="datePreset === 'thisMonth' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' : 'hover:bg-gray-50 dark:hover:bg-slate-700'"
                         class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors">
                     <span>This month</span>
-                    <span class="text-xs bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 rounded-full min-w-[1.5rem] text-center" x-text="dateCounts.thisMonth"></span>
+                    <span class="text-xs bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 rounded-full min-w-[1.5rem] text-center" x-text="dynamicDateCounts.thisMonth"></span>
                 </button>
             </nav>
 
@@ -90,7 +90,7 @@
                                class="rounded border-gray-300 dark:border-slate-600 text-primary-500 focus:ring-primary-500">
                         <i class="fa-solid" :class="[tool.icon, tool.color]"></i>
                         <span class="flex-1 truncate" x-text="tool.name"></span>
-                        <span class="text-xs bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 rounded-full min-w-[1.5rem] text-center" x-text="toolCounts[tool.id] || 0"></span>
+                        <span class="text-xs bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 rounded-full min-w-[1.5rem] text-center" x-text="dynamicToolCounts[tool.id] || 0"></span>
                     </label>
                 </template>
             </nav>
@@ -177,7 +177,7 @@
             </div>
 
             <nav class="space-y-1 max-h-72 overflow-y-auto">
-                <template x-for="proj in projectsList" :key="proj.name">
+                <template x-for="proj in dynamicProjectsList" :key="proj.name">
                     <label x-show="isProjectVisible(proj.name)"
                            class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm cursor-pointer transition-colors"
                            :class="isProjectSelected(proj.name) ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' : 'hover:bg-gray-50 dark:hover:bg-slate-700'">

@@ -5,7 +5,7 @@
 </div>
 
 <!-- Sessions by Date -->
-<template x-for="(dateSessions, date) in filteredByDate" :key="date">
+<template x-for="(dateSessions, date) in paginatedByDate" :key="date">
     <section class="mb-8">
         <!-- Date Header -->
         <h2 class="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-700 dark:text-gray-300">
@@ -16,8 +16,7 @@
         <!-- Sessions Grid -->
         <div class="grid gap-4 md:grid-cols-2">
             <template x-for="session in dateSessions" :key="session.id">
-                <div x-show="isSessionVisible(session.project, session.summary, session.id, date, session.tool)"
-                     class="session-card relative bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200
+                <div class="session-card relative bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200
                             dark:border-slate-700 hover:shadow-md hover:border-primary-300 dark:hover:border-primary-600
                             transition-all duration-200">
 
@@ -63,8 +62,21 @@
 </template>
 
 <!-- Empty State -->
-<div x-show="!loading && Object.keys(filteredByDate).length === 0"
+<div x-show="!loading && filteredTotal === 0"
      class="text-center py-12 text-gray-500 dark:text-gray-400">
     <i class="fa-solid fa-inbox text-4xl mb-4 opacity-50"></i>
     <p>No sessions found</p>
+</div>
+
+<!-- Load More Button -->
+<div x-show="!loading && hasMore" class="text-center py-8">
+    <button @click="loadMore()"
+            class="inline-flex items-center gap-2 px-6 py-3 bg-primary-500 hover:bg-primary-600
+                   text-white font-medium rounded-lg shadow-sm transition-colors">
+        <i class="fa-solid fa-arrow-down"></i>
+        <span>Load More</span>
+    </button>
+    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        Showing <span x-text="shownCount"></span> of <span x-text="filteredTotal"></span> sessions
+    </p>
 </div>

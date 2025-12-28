@@ -2,8 +2,34 @@
  * API Routes for Vibecoding Chronicle
  */
 
+// Input validation limits
+const LIMITS = {
+  TAG_ID: 50,
+  TAG_LABEL: 100,
+  NOTE: 500,
+  SEARCH_QUERY: 200
+};
+
+/**
+ * Validate and sanitize string input
+ */
+function validateString(value, maxLength, fieldName) {
+  if (typeof value !== 'string') {
+    return { error: `${fieldName} must be a string` };
+  }
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return { error: `${fieldName} cannot be empty` };
+  }
+  if (trimmed.length > maxLength) {
+    return { error: `${fieldName} exceeds maximum length of ${maxLength} characters` };
+  }
+  return { value: trimmed };
+}
+
 import {
   getAllSessions,
+  getSessionsCount,
   getSession,
   getMessages,
   getStarsForSession,
@@ -50,11 +76,14 @@ export function setupRoutes(app) {
 
   /**
    * GET /api/sessions
-   * List all sessions with optional filters
+   * List all sessions with sidebar counts
+   * Query params: q (search query, min 3 chars)
    */
   app.get('/api/sessions', (req, res) => {
     try {
-      const sessions = getAllSessions();
+      // Load all sessions (filtering/pagination done client-side)
+      const sessions = getAllSessions({ limit: 100000, offset: 0 });
+      const totalCount = sessions.length;
 
       // Get tag counts per session
       const tagCounts = getSessionTagCounts();
@@ -68,30 +97,38 @@ export function setupRoutes(app) {
         session.tag_count = tagCountMap[session.id] || 0;
       }
 
-      // Apply filters from query params
+      // Calculate sidebar counts from ALL sessions
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const last7Date = new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0];
+      const last30Date = new Date(Date.now() - 29 * 86400000).toISOString().split('T')[0];
+      const thisMonthDate = new Date().toISOString().slice(0, 7) + '-01';
+
+      const sidebarCounts = {
+        dateCounts: { today: 0, yesterday: 0, last7: 0, last30: 0, thisMonth: 0 },
+        toolCounts: {},
+        projectCounts: {}
+      };
+
+      for (const s of sessions) {
+        const date = s.started_at?.split('T')[0];
+        if (date) {
+          if (date === today) sidebarCounts.dateCounts.today++;
+          if (date === yesterday) sidebarCounts.dateCounts.yesterday++;
+          if (date >= last7Date && date <= today) sidebarCounts.dateCounts.last7++;
+          if (date >= last30Date && date <= today) sidebarCounts.dateCounts.last30++;
+          if (date >= thisMonthDate && date <= today) sidebarCounts.dateCounts.thisMonth++;
+        }
+        // Tool counts
+        const tool = s.tool || 'claude';
+        sidebarCounts.toolCounts[tool] = (sidebarCounts.toolCounts[tool] || 0) + 1;
+        // Project counts
+        const project = s.project || 'unknown';
+        sidebarCounts.projectCounts[project] = (sidebarCounts.projectCounts[project] || 0) + 1;
+      }
+
+      // Full-text search in messages + summary/project (server-side for FTS)
       let filtered = sessions;
-
-      // Filter by tool
-      if (req.query.tool) {
-        const tools = req.query.tool.split(',');
-        filtered = filtered.filter(s => tools.includes(s.tool));
-      }
-
-      // Filter by project
-      if (req.query.project) {
-        const projects = req.query.project.split(',');
-        filtered = filtered.filter(s => projects.includes(s.project));
-      }
-
-      // Filter by date range
-      if (req.query.from) {
-        filtered = filtered.filter(s => s.started_at >= req.query.from);
-      }
-      if (req.query.to) {
-        filtered = filtered.filter(s => s.started_at <= req.query.to);
-      }
-
-      // Full-text search in messages + summary/project
       if (req.query.q && req.query.q.trim().length >= 3) {
         const query = req.query.q.trim().toLowerCase();
 
@@ -117,17 +154,13 @@ export function setupRoutes(app) {
         }
       }
 
-      // Get unique projects and tools for filters
-      const allProjects = [...new Set(sessions.map(s => s.project))].sort();
-      const allTools = [...new Set(sessions.map(s => s.tool))].sort();
-
       res.json({
         sessions: filtered,
         byDate,
+        sidebarCounts,
         meta: {
           total: filtered.length,
-          projects: allProjects,
-          tools: allTools
+          totalAll: totalCount
         }
       });
     } catch (error) {
@@ -235,11 +268,23 @@ export function setupRoutes(app) {
       const { sessionId, messageId } = req.params;
       const { tag, note = '' } = req.body;
 
-      if (!tag) {
-        return res.status(400).json({ error: 'Tag is required' });
+      // Validate tag
+      const tagValidation = validateString(tag, LIMITS.TAG_ID, 'Tag');
+      if (tagValidation.error) {
+        return res.status(400).json({ error: tagValidation.error });
       }
 
-      addTag(sessionId, messageId, tag, note);
+      // Validate note (optional, but if provided must be valid)
+      let validatedNote = '';
+      if (note) {
+        const noteValidation = validateString(note, LIMITS.NOTE, 'Note');
+        if (noteValidation.error) {
+          return res.status(400).json({ error: noteValidation.error });
+        }
+        validatedNote = noteValidation.value;
+      }
+
+      addTag(sessionId, messageId, tagValidation.value, validatedNote);
 
       // Return all tags for this message
       const tags = getMessageTags(sessionId, messageId);
@@ -317,17 +362,25 @@ export function setupRoutes(app) {
     try {
       const { id, label } = req.body;
 
-      if (!id || !label) {
-        return res.status(400).json({ error: 'Missing required fields (id, label)' });
+      // Validate id
+      const idValidation = validateString(id, LIMITS.TAG_ID, 'Tag ID');
+      if (idValidation.error) {
+        return res.status(400).json({ error: idValidation.error });
+      }
+
+      // Validate label
+      const labelValidation = validateString(label, LIMITS.TAG_LABEL, 'Label');
+      if (labelValidation.error) {
+        return res.status(400).json({ error: labelValidation.error });
       }
 
       // Check if tag already exists
-      if (getTag(id)) {
+      if (getTag(idValidation.value)) {
         return res.status(409).json({ error: 'Tag already exists' });
       }
 
-      createTag({ id, label });
-      const newTag = getTag(id);
+      createTag({ id: idValidation.value, label: labelValidation.value });
+      const newTag = getTag(idValidation.value);
 
       res.json({ success: true, tag: { ...newTag, count: 0 } });
     } catch (error) {
@@ -345,12 +398,18 @@ export function setupRoutes(app) {
       const { id } = req.params;
       const { label } = req.body;
 
+      // Validate label
+      const labelValidation = validateString(label, LIMITS.TAG_LABEL, 'Label');
+      if (labelValidation.error) {
+        return res.status(400).json({ error: labelValidation.error });
+      }
+
       const tag = getTag(id);
       if (!tag) {
         return res.status(404).json({ error: 'Tag not found' });
       }
 
-      updateTag(id, { label });
+      updateTag(id, { label: labelValidation.value });
       const updated = getTag(id);
 
       res.json({ success: true, tag: updated });

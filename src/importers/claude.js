@@ -77,7 +77,7 @@ export async function importClaudeSessions(claudePath = DEFAULT_PATH) {
       }
 
       const filePath = join(projectPath, jsonlFile);
-      const rawMessages = parseJsonlFile(filePath);
+      const { messages: rawMessages, errors } = parseJsonlFile(filePath);
 
       if (rawMessages.length === 0) {
         continue;

@@ -175,6 +175,8 @@ The following patterns are automatically redacted:
 - No data is sent to external servers
 - Tags and preferences stored server-side
 
+> **⚠️ Backup Recommendation:** Your tags, notes, and session index are stored in `~/.vibecoding-chronicle/chronicle.db`. This is the only copy of your data. Consider backing up this file regularly if you value your tagged content.
+
 ### Security Note
 
 This is a **local-only tool** designed to run on your machine. It reads AI session files from your home directory (`~/.claude`, `~/.codex`, `~/.gemini`) and serves them via a web interface on `localhost:3000`.

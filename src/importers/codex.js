@@ -4,7 +4,7 @@
  */
 
 import { existsSync } from 'fs';
-import { join } from 'path';
+import { join, basename } from 'path';
 import { homedir } from 'os';
 import { glob } from 'fs/promises';
 import { upsertSession, insertMessages, sessionExists } from '../db/index.js';
@@ -41,7 +41,7 @@ export async function importCodexSessions(codexPath = DEFAULT_PATH) {
 
   for (const filePath of jsonlFiles) {
     // Extract session ID from filename (format: something-UUID.jsonl)
-    const fileName = filePath.split('/').pop().replace('.jsonl', '');
+    const fileName = basename(filePath, '.jsonl');
     const sessionId = fileName.split('-').pop();
 
     // Skip if already imported
@@ -49,7 +49,7 @@ export async function importCodexSessions(codexPath = DEFAULT_PATH) {
       continue;
     }
 
-    const rawMessages = parseJsonlFile(filePath);
+    const { messages: rawMessages, errors } = parseJsonlFile(filePath);
     if (rawMessages.length === 0) {
       continue;
     }

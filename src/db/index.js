@@ -158,11 +158,19 @@ export function getSession(id) {
   return db.prepare('SELECT * FROM sessions WHERE id = ?').get(id);
 }
 
-export function getAllSessions() {
+export function getAllSessions(options = {}) {
+  const { limit = 500, offset = 0 } = options;
+
   return db.prepare(`
     SELECT * FROM sessions
     ORDER BY started_at DESC
-  `).all();
+    LIMIT ? OFFSET ?
+  `).all(limit, offset);
+}
+
+export function getSessionsCount() {
+  const result = db.prepare('SELECT COUNT(*) as count FROM sessions').get();
+  return result.count;
 }
 
 export function sessionExists(id) {

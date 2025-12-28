@@ -98,6 +98,7 @@
             projectsList: [],
             totalSessions: 0,
             totalProjects: 0,
+            visibleCount: 50,  // Client-side pagination
             selectedProjects: JSON.parse(localStorage.getItem('chronicle_projects') || '[]'),
             projectSearch: '',
             selectedTools: JSON.parse(localStorage.getItem('chronicle_tools') || '[]'),
@@ -164,6 +165,9 @@
 
             // ============ SESSIONS PAGE ============
             async initSessions() {
+                // Reset pagination on new load
+                this.visibleCount = 50;
+
                 try {
                     // Build API URL with search query (min 3 chars)
                     let apiUrl = '/api/sessions';
@@ -192,43 +196,50 @@
                         this.sessionTags[star.session_id].add(star.tag);
                     }
 
-                    // Build projects list
-                    const projectCounts = {};
-                    for (const session of this.sessions) {
-                        const p = session.project || 'unknown';
-                        projectCounts[p] = (projectCounts[p] || 0) + 1;
-                    }
-                    this.projectsList = Object.entries(projectCounts)
-                        .map(([name, count]) => ({ name, count }))
-                        .sort((a, b) => b.count - a.count);
-
-                    // Build tool counts
-                    this.toolCounts = { claude: 0, codex: 0, gemini: 0 };
-                    for (const session of this.sessions) {
-                        const tool = session.tool || 'claude';
-                        if (this.toolCounts[tool] !== undefined) {
-                            this.toolCounts[tool]++;
+                    // Use server-side sidebar counts if available
+                    if (sessionsData.sidebarCounts) {
+                        this.dateCounts = sessionsData.sidebarCounts.dateCounts;
+                        this.toolCounts = sessionsData.sidebarCounts.toolCounts;
+                        this.projectsList = Object.entries(sessionsData.sidebarCounts.projectCounts)
+                            .map(([name, count]) => ({ name, count }))
+                            .sort((a, b) => b.count - a.count);
+                    } else {
+                        // Fallback: Build counts client-side
+                        const projectCounts = {};
+                        for (const session of this.sessions) {
+                            const p = session.project || 'unknown';
+                            projectCounts[p] = (projectCounts[p] || 0) + 1;
                         }
-                    }
+                        this.projectsList = Object.entries(projectCounts)
+                            .map(([name, count]) => ({ name, count }))
+                            .sort((a, b) => b.count - a.count);
 
-                    // Build date counts (using same date logic as getDateRange)
-                    this.dateCounts = { today: 0, yesterday: 0, last7: 0, last30: 0, thisMonth: 0 };
-                    const todayStr = this.today;
-                    const yesterdayStr = this.yesterday;
-                    const now = new Date();
-                    const last7Date = new Date(now); last7Date.setDate(last7Date.getDate() - 6);
-                    const last7Str = last7Date.toISOString().split('T')[0];
-                    const last30Date = new Date(now); last30Date.setDate(last30Date.getDate() - 29);
-                    const last30Str = last30Date.toISOString().split('T')[0];
-                    const thisMonthStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+                        this.toolCounts = { claude: 0, codex: 0, gemini: 0 };
+                        for (const session of this.sessions) {
+                            const tool = session.tool || 'claude';
+                            if (this.toolCounts[tool] !== undefined) {
+                                this.toolCounts[tool]++;
+                            }
+                        }
 
-                    for (const [date, dateSessions] of Object.entries(this.byDate)) {
-                        const count = dateSessions.length;
-                        if (date === todayStr) this.dateCounts.today += count;
-                        if (date === yesterdayStr) this.dateCounts.yesterday += count;
-                        if (date >= last7Str && date <= todayStr) this.dateCounts.last7 += count;
-                        if (date >= last30Str && date <= todayStr) this.dateCounts.last30 += count;
-                        if (date >= thisMonthStr && date <= todayStr) this.dateCounts.thisMonth += count;
+                        this.dateCounts = { today: 0, yesterday: 0, last7: 0, last30: 0, thisMonth: 0 };
+                        const todayStr = this.today;
+                        const yesterdayStr = this.yesterday;
+                        const now = new Date();
+                        const last7Date = new Date(now); last7Date.setDate(last7Date.getDate() - 6);
+                        const last7Str = last7Date.toISOString().split('T')[0];
+                        const last30Date = new Date(now); last30Date.setDate(last30Date.getDate() - 29);
+                        const last30Str = last30Date.toISOString().split('T')[0];
+                        const thisMonthStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+
+                        for (const [date, dateSessions] of Object.entries(this.byDate)) {
+                            const count = dateSessions.length;
+                            if (date === todayStr) this.dateCounts.today += count;
+                            if (date === yesterdayStr) this.dateCounts.yesterday += count;
+                            if (date >= last7Str && date <= todayStr) this.dateCounts.last7 += count;
+                            if (date >= last30Str && date <= todayStr) this.dateCounts.last30 += count;
+                            if (date >= thisMonthStr && date <= todayStr) this.dateCounts.thisMonth += count;
+                        }
                     }
                 } catch (err) {
                     console.error('Failed to load sessions:', err);
@@ -248,6 +259,121 @@
                 return Object.fromEntries(
                     Object.entries(result).sort((a, b) => b[0].localeCompare(a[0]))
                 );
+            },
+
+            // Paginated view of filtered sessions
+            get paginatedByDate() {
+                const result = {};
+                let count = 0;
+                for (const [date, sessions] of Object.entries(this.filteredByDate)) {
+                    if (count >= this.visibleCount) break;
+                    const remaining = this.visibleCount - count;
+                    result[date] = sessions.slice(0, remaining);
+                    count += result[date].length;
+                }
+                return result;
+            },
+
+            get filteredTotal() {
+                return Object.values(this.filteredByDate).flat().length;
+            },
+
+            get shownCount() {
+                return Object.values(this.paginatedByDate).flat().length;
+            },
+
+            get hasMore() {
+                return this.shownCount < this.filteredTotal;
+            },
+
+            loadMore() {
+                this.visibleCount += 50;
+            },
+
+            // ============ DYNAMIC SIDEBAR COUNTS ============
+            // These update based on other active filters
+
+            // Helper: check if session matches tool + project + tag filters (ignoring date)
+            matchesNonDateFilters(session) {
+                const matchesTool = this.selectedTools.length === 0 || this.selectedTools.includes(session.tool || 'claude');
+                const matchesProject = this.selectedProjects.length === 0 || this.selectedProjects.includes(session.project);
+                const matchesTags = this.selectedTags.length === 0 ||
+                    (this.sessionTags[session.id] && this.selectedTags.some(t => this.sessionTags[session.id].has(t)));
+                return matchesTool && matchesProject && matchesTags;
+            },
+
+            // Helper: check if session matches date + project + tag filters (ignoring tool)
+            matchesNonToolFilters(session, date) {
+                const matchesDate = this.isDateInRange(date);
+                const matchesProject = this.selectedProjects.length === 0 || this.selectedProjects.includes(session.project);
+                const matchesTags = this.selectedTags.length === 0 ||
+                    (this.sessionTags[session.id] && this.selectedTags.some(t => this.sessionTags[session.id].has(t)));
+                return matchesDate && matchesProject && matchesTags;
+            },
+
+            // Helper: check if session matches date + tool + tag filters (ignoring project)
+            matchesNonProjectFilters(session, date) {
+                const matchesDate = this.isDateInRange(date);
+                const matchesTool = this.selectedTools.length === 0 || this.selectedTools.includes(session.tool || 'claude');
+                const matchesTags = this.selectedTags.length === 0 ||
+                    (this.sessionTags[session.id] && this.selectedTags.some(t => this.sessionTags[session.id].has(t)));
+                return matchesDate && matchesTool && matchesTags;
+            },
+
+            // Dynamic date counts (filtered by tool + project + tag)
+            get dynamicDateCounts() {
+                const counts = { today: 0, yesterday: 0, last7: 0, last30: 0, thisMonth: 0 };
+                const todayStr = this.today;
+                const yesterdayStr = this.yesterday;
+                const now = new Date();
+                const last7Str = new Date(now.getTime() - 6 * 86400000).toISOString().split('T')[0];
+                const last30Str = new Date(now.getTime() - 29 * 86400000).toISOString().split('T')[0];
+                const thisMonthStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+
+                for (const [date, sessions] of Object.entries(this.byDate)) {
+                    for (const s of sessions) {
+                        if (!this.matchesNonDateFilters(s)) continue;
+                        if (date === todayStr) counts.today++;
+                        if (date === yesterdayStr) counts.yesterday++;
+                        if (date >= last7Str && date <= todayStr) counts.last7++;
+                        if (date >= last30Str && date <= todayStr) counts.last30++;
+                        if (date >= thisMonthStr && date <= todayStr) counts.thisMonth++;
+                    }
+                }
+                return counts;
+            },
+
+            // Dynamic tool counts (filtered by date + project + tag)
+            get dynamicToolCounts() {
+                const counts = {};
+                for (const [date, sessions] of Object.entries(this.byDate)) {
+                    for (const s of sessions) {
+                        if (!this.matchesNonToolFilters(s, date)) continue;
+                        const tool = s.tool || 'claude';
+                        counts[tool] = (counts[tool] || 0) + 1;
+                    }
+                }
+                return counts;
+            },
+
+            // Dynamic project counts (filtered by date + tool + tag)
+            get dynamicProjectCounts() {
+                const counts = {};
+                for (const [date, sessions] of Object.entries(this.byDate)) {
+                    for (const s of sessions) {
+                        if (!this.matchesNonProjectFilters(s, date)) continue;
+                        const project = s.project || 'unknown';
+                        counts[project] = (counts[project] || 0) + 1;
+                    }
+                }
+                return counts;
+            },
+
+            // Dynamic project list (sorted by count)
+            get dynamicProjectsList() {
+                return Object.entries(this.dynamicProjectCounts)
+                    .map(([name, count]) => ({ name, count }))
+                    .sort((a, b) => b.count - a.count);
             },
 
             // ============ SESSION DETAIL ============
