@@ -1,3 +1,16 @@
+/**
+ * SQLite Database Layer for Vibecoding Chronicle
+ *
+ * Manages all data persistence using better-sqlite3:
+ * - Sessions: Imported AI conversation metadata
+ * - Messages: Individual messages within sessions
+ * - Stars: User-added tags on specific messages
+ * - Tags: Custom tag definitions with labels
+ *
+ * Data is stored in ~/.vibecoding-chronicle/chronicle.db
+ * Full-text search is enabled via SQLite FTS5 extension.
+ */
+
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'fs';
 import { homedir } from 'os';

@@ -1,5 +1,15 @@
 /**
- * View Routes for EJS rendering
+ * View Routes for EJS Page Rendering
+ *
+ * Defines routes that render HTML pages using EJS templates.
+ * Each route passes common data (tags, version) to the layout.
+ *
+ * Pages:
+ * - / : Sessions list with filters and pagination
+ * - /session/:id : Single session detail with messages
+ *
+ * All pages use views/layout.ejs as the base template
+ * with Alpine.js for client-side interactivity.
  */
 
 import { readFileSync } from 'fs';

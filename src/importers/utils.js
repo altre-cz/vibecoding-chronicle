@@ -1,3 +1,17 @@
+/**
+ * Shared Utilities for Session Importers
+ *
+ * Common functions used by all AI tool importers:
+ * - JSONL/JSON file parsing with error handling
+ * - Secret masking (API keys, tokens, passwords, connection strings)
+ * - Project name extraction from file paths
+ * - Message ID generation
+ * - Text truncation helpers
+ *
+ * Security: All message content passes through maskSecrets()
+ * before being stored or displayed to prevent credential leakage.
+ */
+
 import { readFileSync } from 'fs';
 
 /**

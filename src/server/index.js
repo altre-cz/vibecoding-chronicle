@@ -1,5 +1,17 @@
 /**
- * Express server for Vibecoding Chronicle
+ * Express Server for Vibecoding Chronicle
+ *
+ * Main entry point for the web application. Sets up Express
+ * with EJS templating, static file serving, and API routes.
+ *
+ * Features:
+ * - EJS layouts with partials (header, sidebar, pages)
+ * - REST API endpoints for sessions, tags, and stats
+ * - File watcher for auto-importing new AI sessions
+ * - Automatic browser opening on startup
+ *
+ * Usage:
+ * - startServer({ port: 3000, dev: false, open: true })
  */
 
 import express from 'express';

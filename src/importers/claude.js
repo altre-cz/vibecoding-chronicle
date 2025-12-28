@@ -1,6 +1,14 @@
 /**
- * Claude Code session importer
- * Imports from ~/.claude/projects/
+ * Claude Code Session Importer
+ *
+ * Parses Claude Code conversation logs from ~/.claude/projects/.
+ * Each project folder contains JSONL files representing sessions.
+ *
+ * Handles:
+ * - Multi-block message content (text, tool_use, tool_result)
+ * - Extended thinking blocks extraction
+ * - Project name extraction from folder paths
+ * - Summary generation from first user message
  */
 
 import { existsSync, readdirSync, statSync } from 'fs';

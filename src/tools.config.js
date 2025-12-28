@@ -1,19 +1,22 @@
 /**
  * AI Tools Configuration
  *
+ * Central registry for all supported AI coding assistants.
+ * Controls which tools are imported and how they appear in the UI.
+ *
  * Each tool defines:
  * - id: Unique identifier (used in DB and API)
- * - name: Display name
+ * - name: Display name in the UI
  * - icon: Font Awesome icon class
  * - color: Tailwind CSS color class
  * - enabled: Whether the tool is active
- * - defaultPath: Default path to look for sessions (relative to home dir)
+ * - defaultPath: Path to session files (relative to home dir)
  * - importer: Name of the importer module in src/importers/
  *
- * To add a new AI tool:
- * 1. Create src/importers/newtool.js with importNewtoolSessions() function
- * 2. Add entry to this config
- * 3. Update src/importers/index.js to include the new importer
+ * Adding a new AI tool:
+ * 1. Create src/importers/newtool.js with importNewtoolSessions()
+ * 2. Add entry to TOOLS array below
+ * 3. Register in src/importers/index.js
  */
 
 import { homedir } from 'os';

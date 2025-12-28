@@ -1,6 +1,14 @@
 /**
- * Gemini CLI session importer
- * Imports from ~/.gemini/tmp/[hash]/chats/
+ * Gemini CLI Session Importer
+ *
+ * Parses Google Gemini CLI conversation logs from ~/.gemini/tmp/.
+ * Sessions are stored in hash-named folders with JSON chat files.
+ *
+ * Handles:
+ * - Hash-based folder discovery
+ * - JSON format parsing (different from JSONL)
+ * - Message content normalization
+ * - Timestamp extraction from file metadata
  */
 
 import { existsSync, readdirSync, statSync } from 'fs';

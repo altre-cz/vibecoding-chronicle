@@ -1,8 +1,17 @@
 /**
- * Session importers orchestrator
+ * Session Importers Orchestrator
  *
- * Uses tools.config.js to determine which importers to run.
- * Each importer is dynamically loaded based on the tool configuration.
+ * Coordinates importing sessions from multiple AI coding assistants.
+ * Uses tools.config.js to determine which importers are enabled
+ * and where to find their session files.
+ *
+ * Supported tools:
+ * - Claude Code: ~/.claude/projects/
+ * - Codex CLI: ~/.codex/sessions/
+ * - Gemini CLI: ~/.gemini/tmp/
+ *
+ * Each importer parses tool-specific formats (JSONL, JSON)
+ * and normalizes them into a common session/message structure.
  */
 
 import { getEnabledTools } from '../tools.config.js';

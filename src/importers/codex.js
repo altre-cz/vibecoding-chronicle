@@ -1,6 +1,14 @@
 /**
- * Codex CLI session importer
- * Imports from ~/.codex/sessions/
+ * Codex CLI Session Importer
+ *
+ * Parses OpenAI Codex CLI conversation logs from ~/.codex/sessions/.
+ * Sessions are organized by date (YYYY/MM/DD/) with JSONL files.
+ *
+ * Handles:
+ * - Date-based folder structure navigation
+ * - Cross-platform path handling (Windows/Unix)
+ * - Message role mapping (user/assistant)
+ * - Project detection from session metadata
  */
 
 import { existsSync } from 'fs';

@@ -1,5 +1,14 @@
 /**
  * API Routes for Vibecoding Chronicle
+ *
+ * Handles all REST API endpoints for the application:
+ * - Sessions: List, get details, search with full-text
+ * - Stars/Tags: Add, remove, list tags on messages
+ * - Tags: CRUD operations for tag definitions
+ * - Stats: Aggregate statistics
+ *
+ * All data is stored locally in SQLite. Input validation
+ * is applied to prevent injection and limit abuse.
  */
 
 // Input validation limits

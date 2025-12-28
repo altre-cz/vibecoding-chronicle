@@ -1,6 +1,16 @@
 /**
- * File watcher for new AI coding sessions
- * Watches ~/.claude, ~/.codex, ~/.gemini for new session files
+ * File Watcher for AI Coding Sessions
+ *
+ * Monitors AI assistant directories for new session files
+ * and triggers automatic import when changes are detected.
+ *
+ * Watched paths:
+ * - ~/.claude/projects/ (Claude Code)
+ * - ~/.codex/sessions/ (Codex CLI)
+ * - ~/.gemini/tmp/ (Gemini CLI)
+ *
+ * Uses chokidar for cross-platform file watching with
+ * debouncing to avoid excessive imports during active sessions.
  */
 
 import chokidar from 'chokidar';

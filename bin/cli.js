@@ -1,5 +1,18 @@
 #!/usr/bin/env node
 
+/**
+ * CLI Entry Point for Vibecoding Chronicle
+ *
+ * Provides command-line interface for the application:
+ * - serve: Start the web server (default command)
+ * - import: Manually trigger session import
+ *
+ * Usage:
+ * - npx vibecoding-chronicle serve --port 3000
+ * - npx vibecoding-chronicle serve --dev --no-open
+ * - vcc serve (if installed globally)
+ */
+
 import { Command } from 'commander';
 import { startServer } from '../src/server/index.js';
 import { importAllSessions } from '../src/importers/index.js';
