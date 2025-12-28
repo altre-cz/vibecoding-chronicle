@@ -58,28 +58,9 @@ npm install
 npm start
 ```
 
-### Option 2: Global Install
-
-```bash
-# Install globally
-npm install -g vibecoding-chronicle
-
-# Run from anywhere
-vibecoding-chronicle serve
-# or use the short alias
-vcc serve
-```
-
-### Option 3: npx (No Install)
-
-```bash
-# Run directly without installing
-npx vibecoding-chronicle serve
-```
-
-> **Note:** All options store data in `~/.vibecoding-chronicle/` and read sessions from `~/.claude/`, `~/.codex/`, `~/.gemini/`. You can run from any directory.
-
 The server will start at `http://localhost:3000` and automatically open in your browser.
+
+> **Note:** Data is stored in `~/.vibecoding-chronicle/` and sessions are read from `~/.claude/`, `~/.codex/`, `~/.gemini/`.
 
 ## Usage
 
