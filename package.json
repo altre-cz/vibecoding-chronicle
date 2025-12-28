@@ -30,6 +30,15 @@
     "url": "https://github.com/altre-cz/vibecoding-chronicle/issues"
   },
   "homepage": "https://github.com/altre-cz/vibecoding-chronicle#readme",
+  "files": [
+    "bin",
+    "src",
+    "views",
+    "public",
+    "package.json",
+    "LICENSE",
+    "README.md"
+  ],
   "type": "module",
   "dependencies": {
     "better-sqlite3": "^11.7.0",

@@ -48,19 +48,36 @@ It's like having a personal wiki of every problem you've solved with AI.
 - Node.js 18+
 - npm
 
-### Quick Start
+### Option 1: Quick Start (Recommended)
 
 ```bash
-# Clone the repository
+# Clone and run
 git clone https://github.com/altre-cz/vibecoding-chronicle.git
 cd vibecoding-chronicle
-
-# Install dependencies
 npm install
-
-# Start the server
 npm start
 ```
+
+### Option 2: Global Install
+
+```bash
+# Install globally
+npm install -g vibecoding-chronicle
+
+# Run from anywhere
+vibecoding-chronicle serve
+# or use the short alias
+vcc serve
+```
+
+### Option 3: npx (No Install)
+
+```bash
+# Run directly without installing
+npx vibecoding-chronicle serve
+```
+
+> **Note:** All options store data in `~/.vibecoding-chronicle/` and read sessions from `~/.claude/`, `~/.codex/`, `~/.gemini/`. You can run from any directory.
 
 The server will start at `http://localhost:3000` and automatically open in your browser.
 
@@ -182,6 +199,33 @@ The following patterns are automatically redacted:
 This is a **local-only tool** designed to run on your machine. It reads AI session files from your home directory (`~/.claude`, `~/.codex`, `~/.gemini`) and serves them via a web interface on `localhost:3000`.
 
 The application does not expose any remote endpoints and is not intended to be accessible from other machines on your network.
+
+## Troubleshooting
+
+### "No sessions found"
+
+Make sure you have AI assistant session files in the expected locations:
+- Claude Code: `~/.claude/projects/`
+- Codex CLI: `~/.codex/sessions/`
+- Gemini CLI: `~/.gemini/tmp/`
+
+### "Cannot find module 'better-sqlite3'"
+
+This package requires native compilation. Try:
+```bash
+npm rebuild better-sqlite3
+```
+
+### Port already in use
+
+Use a different port:
+```bash
+npm start -- --port 8080
+```
+
+### Sessions not updating
+
+Click the refresh button in the header, or restart the server. The file watcher may miss some changes.
 
 ## Tech Stack
 

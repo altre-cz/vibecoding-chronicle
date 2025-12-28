@@ -22,12 +22,13 @@ const program = new Command();
 
 program
   .name('vibecoding-chronicle')
-  .description('Beautiful explorer for AI coding assistant transcripts')
+  .alias('vcc')
+  .description('Beautiful explorer for AI coding assistant transcripts\n\n  Browse and search your Claude Code, Codex CLI, and Gemini CLI conversations.\n  Tag important solutions, filter by project/date, and never lose that code again.')
   .version('1.0.0');
 
 program
-  .command('serve')
-  .description('Start the Chronicle server')
+  .command('serve', { isDefault: true })
+  .description('Start the Chronicle server (default command)')
   .option('-p, --port <number>', 'Port to listen on', '3000')
   .option('--no-open', 'Do not open browser automatically')
   .option('--no-watch', 'Do not watch for new sessions')
