@@ -1,0 +1,42 @@
+{
+  "name": "vibecoding-chronicle",
+  "version": "1.0.0",
+  "description": "Beautiful explorer for AI coding assistant transcripts (Claude Code, Codex CLI, Gemini CLI)",
+  "main": "src/index.js",
+  "bin": {
+    "vibecoding-chronicle": "./bin/cli.js",
+    "vcc": "./bin/cli.js"
+  },
+  "scripts": {
+    "start": "node bin/cli.js serve",
+    "dev": "node bin/cli.js serve --dev"
+  },
+  "keywords": [
+    "claude",
+    "codex",
+    "gemini",
+    "ai",
+    "coding",
+    "transcripts",
+    "explorer"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "chokidar": "^4.0.3",
+    "commander": "^13.0.0",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-ejs-layouts": "^2.5.1",
+    "marked": "^15.0.6",
+    "open": "^10.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

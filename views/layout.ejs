@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en" x-data="app()" :class="{ 'dark': darkMode }">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> | Vibecoding Chronicle</title>
+
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc',
+                            400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
+                            800: '#3730a3', 900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        [x-cloak] { display: none !important; }
+        .session-card:hover, .message-card:hover { transform: translateY(-2px); }
+        .message-content { white-space: pre-wrap; word-break: break-word; }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-200">
+
+    <%- include('partials/header') %>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex gap-8">
+            <% if (showSidebar !== false) { %>
+                <%- include('partials/sidebar') %>
+            <% } %>
+
+            <!-- Main Content -->
+            <main class="flex-1 min-w-0">
+                <%- body %>
+            </main>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-200 dark:border-slate-700 mt-12 py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-500 dark:text-gray-400">
+            <p><i class="fa-solid fa-code mr-1"></i> Vibecoding Chronicle</p>
+        </div>
+    </footer>
+
+    <script>
+    // Page context from server
+    const PAGE_CONTEXT = {
+        currentPage: '<%= currentPage %>',
+        sessionId: '<%= typeof sessionId !== "undefined" ? sessionId : "" %>',
+        selectedTag: '<%= typeof selectedTag !== "undefined" && selectedTag ? selectedTag : "" %>'
+    };
+
+    function app() {
+        return {
+            // ============ SHARED STATE ============
+            darkMode: localStorage.getItem('darkMode') === 'true',
+            loading: true,
+            search: localStorage.getItem('chronicle_search') || '',
+            tags: [],
+            newTagLabel: '',
+            editingTagId: null,
+            editingTagLabel: '',
+
+            // ============ SESSIONS PAGE STATE ============
+            sessions: [],
+            byDate: {},
+            projectsList: [],
+            totalSessions: 0,
+            totalProjects: 0,
+            selectedProjects: JSON.parse(localStorage.getItem('chronicle_projects') || '[]'),
+            projectSearch: '',
+            selectedTools: JSON.parse(localStorage.getItem('chronicle_tools') || '[]'),
+            availableTools: [],
+            toolCounts: {},
+            dateCounts: { today: 0, yesterday: 0, last7: 0, last30: 0, thisMonth: 0 },
+            datePreset: localStorage.getItem('chronicle_datePreset') || 'last7',
+            customDateFrom: localStorage.getItem('chronicle_dateFrom') || '',
+            customDateTo: localStorage.getItem('chronicle_dateTo') || '',
+            sessionTags: {},
+
+            // ============ SESSION DETAIL STATE ============
+            session: null,
+            messages: [],
+            messageTags: {},
+            expandedThinking: {},
+            showOnlyUser: false,
+            showOnlyTagged: false,
+            filterTag: null,
+            showTagPicker: null,
+
+            // ============ TAGGED MESSAGES STATE ============
+            taggedMessages: [],
+            loadingTagged: true,
+
+            // ============ INIT ============
+            async init() {
+                // Load shared data for all pages
+                await Promise.all([
+                    this.loadTags(),
+                    this.loadTools()
+                ]);
+
+                // Page-specific init
+                if (PAGE_CONTEXT.currentPage === 'sessions') {
+                    await this.initSessions();
+                } else if (PAGE_CONTEXT.currentPage === 'session') {
+                    await this.initSession();
+                } else if (PAGE_CONTEXT.currentPage === 'tagged') {
+                    this.filterTag = PAGE_CONTEXT.selectedTag || null;
+                    await this.initTagged();
+                }
+            },
+
+            async loadTools() {
+                try {
+                    const res = await fetch('/api/tools');
+                    const data = await res.json();
+                    this.availableTools = (data.tools || []).filter(t => t.enabled);
+                    // Initialize toolCounts for each tool
+                    this.toolCounts = {};
+                    for (const tool of this.availableTools) {
+                        this.toolCounts[tool.id] = 0;
+                    }
+                } catch (err) {
+                    console.error('Failed to load tools:', err);
+                }
+            },
+
+            async loadTags() {
+                try {
+                    const res = await fetch('/api/tags');
+                    const data = await res.json();
+                    this.tags = data.tags || [];
+                } catch (err) {
+                    console.error('Failed to load tags:', err);
+                }
+            },
+
+            // ============ SESSIONS PAGE ============
+            async initSessions() {
+                try {
+                    const [sessionsRes, starsRes] = await Promise.all([
+                        fetch('/api/sessions'),
+                        fetch('/api/stars')
+                    ]);
+                    const sessionsData = await sessionsRes.json();
+                    const starsData = await starsRes.json();
+
+                    this.sessions = sessionsData.sessions || [];
+                    this.byDate = sessionsData.byDate || {};
+                    this.totalSessions = sessionsData.meta?.total || 0;
+                    this.totalProjects = sessionsData.meta?.projects?.length || 0;
+
+                    // Build session -> tags map
+                    this.sessionTags = {};
+                    for (const star of (starsData.stars || [])) {
+                        if (!this.sessionTags[star.session_id]) {
+                            this.sessionTags[star.session_id] = new Set();
+                        }
+                        this.sessionTags[star.session_id].add(star.tag);
+                    }
+
+                    // Build projects list
+                    const projectCounts = {};
+                    for (const session of this.sessions) {
+                        const p = session.project || 'unknown';
+                        projectCounts[p] = (projectCounts[p] || 0) + 1;
+                    }
+                    this.projectsList = Object.entries(projectCounts)
+                        .map(([name, count]) => ({ name, count }))
+                        .sort((a, b) => b.count - a.count);
+
+                    // Build tool counts
+                    this.toolCounts = { claude: 0, codex: 0, gemini: 0 };
+                    for (const session of this.sessions) {
+                        const tool = session.tool || 'claude';
+                        if (this.toolCounts[tool] !== undefined) {
+                            this.toolCounts[tool]++;
+                        }
+                    }
+
+                    // Build date counts (using same date logic as getDateRange)
+                    this.dateCounts = { today: 0, yesterday: 0, last7: 0, last30: 0, thisMonth: 0 };
+                    const todayStr = this.today;
+                    const yesterdayStr = this.yesterday;
+                    const now = new Date();
+                    const last7Date = new Date(now); last7Date.setDate(last7Date.getDate() - 6);
+                    const last7Str = last7Date.toISOString().split('T')[0];
+                    const last30Date = new Date(now); last30Date.setDate(last30Date.getDate() - 29);
+                    const last30Str = last30Date.toISOString().split('T')[0];
+                    const thisMonthStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+
+                    for (const [date, dateSessions] of Object.entries(this.byDate)) {
+                        const count = dateSessions.length;
+                        if (date === todayStr) this.dateCounts.today += count;
+                        if (date === yesterdayStr) this.dateCounts.yesterday += count;
+                        if (date >= last7Str && date <= todayStr) this.dateCounts.last7 += count;
+                        if (date >= last30Str && date <= todayStr) this.dateCounts.last30 += count;
+                        if (date >= thisMonthStr && date <= todayStr) this.dateCounts.thisMonth += count;
+                    }
+                } catch (err) {
+                    console.error('Failed to load sessions:', err);
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            get filteredByDate() {
+                const result = {};
+                for (const [date, dateSessions] of Object.entries(this.byDate)) {
+                    const visible = dateSessions.filter(s =>
+                        this.isSessionVisible(s.project, s.summary, s.id, date, s.tool)
+                    );
+                    if (visible.length > 0) result[date] = visible;
+                }
+                return Object.fromEntries(
+                    Object.entries(result).sort((a, b) => b[0].localeCompare(a[0]))
+                );
+            },
+
+            // ============ SESSION DETAIL ============
+            async initSession() {
+                const sessionId = PAGE_CONTEXT.sessionId;
+                if (!sessionId) {
+                    window.location.href = '/';
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`/api/sessions/${sessionId}`);
+                    if (!res.ok) throw new Error('Session not found');
+
+                    const data = await res.json();
+                    this.session = data.session;
+                    this.messages = (data.messages || []).filter(m =>
+                        (m.type === 'user' || m.type === 'assistant') && m.content
+                    );
+                    this.messageTags = data.stars || {};
+                } catch (err) {
+                    console.error('Failed to load session:', err);
+                    alert('Session not found');
+                    window.location.href = '/';
+                } finally {
+                    this.loading = false;
+
+                    // Scroll to message if hash present
+                    if (window.location.hash) {
+                        setTimeout(() => {
+                            const el = document.querySelector(window.location.hash);
+                            if (el) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                el.classList.add('ring-4', 'ring-primary-400');
+                                setTimeout(() => el.classList.remove('ring-4', 'ring-primary-400'), 2000);
+                            }
+                        }, 100);
+                    }
+                }
+            },
+
+            // ============ TAGGED MESSAGES ============
+            async initTagged() {
+                try {
+                    const res = await fetch('/api/tagged-messages');
+                    const data = await res.json();
+                    this.taggedMessages = data.messages || [];
+                } catch (err) {
+                    console.error('Failed to load tagged messages:', err);
+                } finally {
+                    this.loadingTagged = false;
+                }
+            },
+
+            get filteredTaggedMessages() {
+                if (!this.filterTag) return this.taggedMessages;
+                return this.taggedMessages.filter(m => m.tag === this.filterTag);
+            },
+
+            getTagMessageCount(tagId) {
+                return this.taggedMessages.filter(m => m.tag === tagId).length;
+            },
+
+            getTagLabel(tagId) {
+                const tag = this.tags.find(t => t.id === tagId);
+                return tag ? tag.label : tagId;
+            },
+
+            // ============ DATE FILTERS ============
+            get today() { return new Date().toISOString().split('T')[0]; },
+            get yesterday() {
+                const d = new Date();
+                d.setDate(d.getDate() - 1);
+                return d.toISOString().split('T')[0];
+            },
+
+            setDatePreset(preset) {
+                this.datePreset = preset;
+                localStorage.setItem('chronicle_datePreset', preset);
+            },
+
+            getDateRange() {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                let from, to;
+
+                switch(this.datePreset) {
+                    case 'today': from = to = this.today; break;
+                    case 'yesterday': from = to = this.yesterday; break;
+                    case 'last7':
+                        to = this.today;
+                        const d7 = new Date(today); d7.setDate(d7.getDate() - 6);
+                        from = d7.toISOString().split('T')[0]; break;
+                    case 'last30':
+                        to = this.today;
+                        const d30 = new Date(today); d30.setDate(d30.getDate() - 29);
+                        from = d30.toISOString().split('T')[0]; break;
+                    case 'thisMonth':
+                        to = this.today;
+                        from = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-01'; break;
+                    case 'custom':
+                        from = this.customDateFrom || '1970-01-01';
+                        to = this.customDateTo || this.today; break;
+                    default: from = '1970-01-01'; to = this.today;
+                }
+                return { from, to };
+            },
+
+            isDateInRange(date) {
+                const { from, to } = this.getDateRange();
+                return date >= from && date <= to;
+            },
+
+            // ============ FORMAT HELPERS ============
+            formatDate(isoStr) {
+                if (!isoStr) return '';
+                const date = new Date(isoStr);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            },
+
+            formatTime(isoStr) {
+                if (!isoStr) return '';
+                const date = new Date(isoStr);
+                return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            },
+
+            formatDateTime(isoStr) {
+                if (!isoStr) return '';
+                const date = new Date(isoStr);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+                       date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            },
+
+            formatDateHuman(dateStr) {
+                const date = new Date(dateStr + 'T00:00:00');
+                if (dateStr === this.today) return 'Today';
+                if (dateStr === this.yesterday) return 'Yesterday';
+                return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            },
+
+            // ============ TOOL HELPERS ============
+            getToolIcon(tool) {
+                const icons = { 'claude': 'fa-robot text-orange-500', 'codex': 'fa-code text-green-500', 'gemini': 'fa-gem text-blue-500' };
+                return icons[tool] || icons['claude'];
+            },
+
+            getToolName(tool) {
+                const names = { 'claude': 'Claude', 'codex': 'Codex', 'gemini': 'Gemini' };
+                return names[tool] || 'Claude';
+            },
+
+            // ============ DARK MODE ============
+            toggleDarkMode() {
+                this.darkMode = !this.darkMode;
+                localStorage.setItem('darkMode', this.darkMode);
+            },
+
+            // ============ TAGS CRUD ============
+            async addTag() {
+                if (!this.newTagLabel.trim()) return;
+                const id = this.newTagLabel.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                try {
+                    const res = await fetch('/api/tags', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id, label: this.newTagLabel })
+                    });
+                    const data = await res.json();
+                    if (data.tag) {
+                        this.tags.push(data.tag);
+                        this.newTagLabel = '';
+                    }
+                } catch (err) { console.error('Failed to add tag:', err); }
+            },
+
+            async removeTag(tagId) {
+                try {
+                    const res = await fetch(`/api/tags/${tagId}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (data.success) {
+                        this.tags = this.tags.filter(t => t.id !== tagId);
+                    } else if (data.error) { alert(data.error); }
+                } catch (err) { console.error('Failed to delete tag:', err); }
+            },
+
+            startTagEdit(tag) {
+                this.editingTagId = tag.id;
+                this.editingTagLabel = tag.label;
+                this.$nextTick(() => this.$refs.tagInput?.focus());
+            },
+
+            async saveTagEdit(tagId) {
+                if (!this.editingTagLabel.trim()) { this.cancelTagEdit(); return; }
+                try {
+                    await fetch(`/api/tags/${tagId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ label: this.editingTagLabel })
+                    });
+                    const tag = this.tags.find(t => t.id === tagId);
+                    if (tag) tag.label = this.editingTagLabel;
+                } catch (err) { console.error('Failed to update tag:', err); }
+                this.cancelTagEdit();
+            },
+
+            cancelTagEdit() {
+                this.editingTagId = null;
+                this.editingTagLabel = '';
+            },
+
+            goToTaggedMessages(tagId) {
+                window.location.href = '/tagged?tag=' + tagId;
+            },
+
+            // ============ PROJECTS FILTER ============
+            toggleProject(project) {
+                const idx = this.selectedProjects.indexOf(project);
+                if (idx === -1) { this.selectedProjects.push(project); }
+                else { this.selectedProjects.splice(idx, 1); }
+                localStorage.setItem('chronicle_projects', JSON.stringify(this.selectedProjects));
+            },
+
+            isProjectSelected(project) { return this.selectedProjects.includes(project); },
+            isProjectVisible(project) {
+                if (this.projectSearch === '') return true;
+                return project.toLowerCase().includes(this.projectSearch.toLowerCase());
+            },
+
+            clearProjects() {
+                this.selectedProjects = [];
+                localStorage.setItem('chronicle_projects', '[]');
+            },
+
+            // ============ TOOLS FILTER ============
+            toggleTool(toolId) {
+                const idx = this.selectedTools.indexOf(toolId);
+                if (idx === -1) { this.selectedTools.push(toolId); }
+                else { this.selectedTools.splice(idx, 1); }
+                localStorage.setItem('chronicle_tools', JSON.stringify(this.selectedTools));
+            },
+
+            isToolSelected(toolId) { return this.selectedTools.includes(toolId); },
+
+            // ============ SESSION VISIBILITY ============
+            isSessionVisible(project, summary, sessionId, date, tool) {
+                const matchesTool = this.selectedTools.length === 0 || this.selectedTools.includes(tool || 'claude');
+                const matchesProject = this.selectedProjects.length === 0 || this.selectedProjects.includes(project);
+                const matchesDate = this.isDateInRange(date);
+                const matchesSearch = this.search === '' ||
+                    (summary && summary.toLowerCase().includes(this.search.toLowerCase())) ||
+                    (project && project.toLowerCase().includes(this.search.toLowerCase()));
+                return matchesTool && matchesProject && matchesDate && matchesSearch;
+            },
+
+            // ============ MESSAGE TAGS (SESSION DETAIL) ============
+            async toggleTag(msgId, tagId) {
+                const sessionId = this.session?.id;
+                if (!sessionId) return;
+
+                const currentTags = this.messageTags[msgId] || [];
+                const hasTag = currentTags.includes(tagId);
+
+                if (hasTag) {
+                    this.messageTags[msgId] = currentTags.filter(t => t !== tagId);
+                    if (this.messageTags[msgId].length === 0) delete this.messageTags[msgId];
+                    await fetch(`/api/stars/${sessionId}/${msgId}/${tagId}`, { method: 'DELETE' });
+                } else {
+                    if (!this.messageTags[msgId]) this.messageTags[msgId] = [];
+                    this.messageTags[msgId].push(tagId);
+                    await fetch(`/api/stars/${sessionId}/${msgId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tag: tagId })
+                    });
+                }
+            },
+
+            hasTag(msgId, tagId) { return (this.messageTags[msgId] || []).includes(tagId); },
+            hasAnyTag(msgId) { return (this.messageTags[msgId] || []).length > 0; },
+
+            isMessageVisible(msgId, msgType) {
+                if (this.showOnlyUser && msgType !== 'user') return false;
+                if (this.showOnlyTagged && !this.hasAnyTag(msgId)) return false;
+                if (this.filterTag && !this.hasTag(msgId, this.filterTag)) return false;
+                return true;
+            },
+
+            get taggedCount() { return Object.keys(this.messageTags).length; },
+            getTagCount(tagId) { return Object.values(this.messageTags).filter(tags => tags.includes(tagId)).length; }
+        };
+    }
+    </script>
+</body>
+</html>

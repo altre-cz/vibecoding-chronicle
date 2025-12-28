@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Database (stored in ~/.vibecoding-chronicle/)
+*.db
+*.sqlite
+*.sqlite3
+
+# Build output
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Legacy Python files (to be removed)
+__pycache__/
+*.py[cod]
+venv/
+output/
+templates/
+static/
+*.py
+requirements.txt
