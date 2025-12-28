@@ -2,7 +2,13 @@
  * View Routes for EJS rendering
  */
 
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { getTagsWithCounts } from '../db/index.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8'));
 
 /**
  * Get common data for all pages (sidebar data)
@@ -14,7 +20,8 @@ function getCommonData() {
     tags,
     projects: [],  // Will be loaded via API
     tools: ['claude', 'codex', 'gemini'],
-    selectedTag: null
+    appVersion: pkg.version,
+    appName: pkg.name
   };
 }
 
@@ -48,18 +55,4 @@ export function setupViewRoutes(app) {
     });
   });
 
-  /**
-   * GET /tagged - Tagged messages
-   */
-  app.get('/tagged', (req, res) => {
-    const tagFilter = req.query.tag || null;
-
-    res.render('pages/tagged', {
-      title: 'Tagged Messages',
-      currentPage: 'tagged',
-      showSidebar: true,
-      selectedTag: tagFilter,
-      ...getCommonData()
-    });
-  });
 }

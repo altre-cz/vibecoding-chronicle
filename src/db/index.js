@@ -68,6 +68,14 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project);
     CREATE INDEX IF NOT EXISTS idx_stars_session ON stars(session_id);
 
+    -- FTS5 virtual table for full-text search on messages
+    CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
+      message_id,
+      session_id,
+      content,
+      tokenize='unicode61'
+    );
+
     CREATE TABLE IF NOT EXISTS tags (
       id TEXT PRIMARY KEY,
       label TEXT NOT NULL,
@@ -84,6 +92,20 @@ export function initDb() {
 
   // Insert default tags if none exist
   initDefaultTags();
+
+  // Check if FTS needs rebuild (after schema changes or first run)
+  try {
+    const ftsCount = db.prepare('SELECT COUNT(*) as cnt FROM messages_fts').get();
+    const msgCount = db.prepare('SELECT COUNT(*) as cnt FROM messages WHERE content IS NOT NULL').get();
+
+    if (ftsCount.cnt === 0 && msgCount.cnt > 0) {
+      console.log('  Building search index...');
+      const indexed = rebuildFtsIndex();
+      console.log(`  Indexed ${indexed} messages for full-text search`);
+    }
+  } catch (err) {
+    console.error('  FTS init error:', err.message);
+  }
 
   return db;
 }
@@ -155,6 +177,11 @@ export function insertMessages(sessionId, messages) {
     VALUES (@id, @session_id, @type, @content, @timestamp, @tool_name, @tool_input, @tool_output, @thinking, @position)
   `);
 
+  const ftsStmt = db.prepare(`
+    INSERT OR REPLACE INTO messages_fts (message_id, session_id, content)
+    VALUES (@message_id, @session_id, @content)
+  `);
+
   const insertMany = db.transaction((msgs) => {
     for (const msg of msgs) {
       stmt.run({
@@ -169,6 +196,15 @@ export function insertMessages(sessionId, messages) {
         thinking: msg.thinking || null,
         position: msg.position
       });
+
+      // Also insert into FTS index (only if content exists)
+      if (msg.content) {
+        ftsStmt.run({
+          message_id: msg.id,
+          session_id: sessionId,
+          content: msg.content
+        });
+      }
     }
   });
 
@@ -181,6 +217,51 @@ export function getMessages(sessionId) {
     WHERE session_id = ?
     ORDER BY position ASC
   `).all(sessionId);
+}
+
+// Rebuild FTS index from existing messages
+export function rebuildFtsIndex() {
+  // Clear existing FTS data
+  db.prepare('DELETE FROM messages_fts').run();
+
+  // Repopulate from messages table
+  const stmt = db.prepare(`
+    INSERT INTO messages_fts (message_id, session_id, content)
+    SELECT id, session_id, content FROM messages WHERE content IS NOT NULL
+  `);
+  const result = stmt.run();
+  return result.changes;
+}
+
+// Search messages using FTS5
+export function searchMessages(query) {
+  if (!query || query.trim().length < 3) {
+    return [];
+  }
+
+  // Escape special FTS characters and prepare query
+  const searchQuery = query.trim()
+    .replace(/['"]/g, '') // Remove quotes
+    .split(/\s+/)
+    .filter(word => word.length > 0)
+    .map(word => `"${word}"*`) // Prefix matching
+    .join(' ');
+
+  if (!searchQuery) {
+    return [];
+  }
+
+  try {
+    return db.prepare(`
+      SELECT DISTINCT session_id
+      FROM messages_fts
+      WHERE messages_fts MATCH ?
+      ORDER BY rank
+    `).all(searchQuery);
+  } catch (err) {
+    console.error('FTS search error:', err.message);
+    return [];
+  }
 }
 
 // Star operations

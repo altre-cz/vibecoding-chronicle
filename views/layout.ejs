@@ -57,10 +57,17 @@
     <footer class="border-t border-gray-200 dark:border-slate-700 mt-12 py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-500 dark:text-gray-400">
             <p>
-                Made with <i class="fa-solid fa-heart text-red-500"></i> by
-                <span class="font-medium">Alex Trejtnar</span>
-                in collaboration with
-                <a href="https://claude.ai/claude-code" target="_blank" class="text-primary-500 hover:underline">Claude Code</a>
+                Vibecoding Chronicle v<%= appVersion %>
+                <span class="mx-2">|</span>
+                <a href="https://github.com/altre-cz/vibecoding-chronicle" target="_blank" class="hover:text-primary-500">
+                    <i class="fa-brands fa-github"></i> GitHub
+                </a>
+                <span class="mx-2">|</span>
+                <span>MIT License</span>
+            </p>
+            <p class="mt-1">
+                © 2025 Alex Trejtnar &
+                <a href="https://claude.ai/download" target="_blank" class="hover:text-primary-500">Claude Code</a>
             </p>
         </div>
     </footer>
@@ -69,8 +76,7 @@
     // Page context from server
     const PAGE_CONTEXT = {
         currentPage: '<%= currentPage %>',
-        sessionId: '<%= typeof sessionId !== "undefined" ? sessionId : "" %>',
-        selectedTag: '<%= typeof selectedTag !== "undefined" && selectedTag ? selectedTag : "" %>'
+        sessionId: '<%= typeof sessionId !== "undefined" ? sessionId : "" %>'
     };
 
     function app() {
@@ -78,7 +84,9 @@
             // ============ SHARED STATE ============
             darkMode: localStorage.getItem('darkMode') === 'true',
             loading: true,
+            refreshing: false,
             search: localStorage.getItem('chronicle_search') || '',
+            searchTimeout: null,
             tags: [],
             newTagLabel: '',
             editingTagId: null,
@@ -93,6 +101,7 @@
             selectedProjects: JSON.parse(localStorage.getItem('chronicle_projects') || '[]'),
             projectSearch: '',
             selectedTools: JSON.parse(localStorage.getItem('chronicle_tools') || '[]'),
+            selectedTags: JSON.parse(localStorage.getItem('chronicle_tags') || '[]'),
             availableTools: [],
             toolCounts: {},
             dateCounts: { today: 0, yesterday: 0, last7: 0, last30: 0, thisMonth: 0 },
@@ -111,9 +120,6 @@
             filterTag: null,
             showTagPicker: null,
 
-            // ============ TAGGED MESSAGES STATE ============
-            taggedMessages: [],
-            loadingTagged: true,
 
             // ============ INIT ============
             async init() {
@@ -128,9 +134,6 @@
                     await this.initSessions();
                 } else if (PAGE_CONTEXT.currentPage === 'session') {
                     await this.initSession();
-                } else if (PAGE_CONTEXT.currentPage === 'tagged') {
-                    this.filterTag = PAGE_CONTEXT.selectedTag || null;
-                    await this.initTagged();
                 }
             },
 
@@ -162,8 +165,14 @@
             // ============ SESSIONS PAGE ============
             async initSessions() {
                 try {
+                    // Build API URL with search query (min 3 chars)
+                    let apiUrl = '/api/sessions';
+                    if (this.search && this.search.trim().length >= 3) {
+                        apiUrl += '?q=' + encodeURIComponent(this.search.trim());
+                    }
+
                     const [sessionsRes, starsRes] = await Promise.all([
-                        fetch('/api/sessions'),
+                        fetch(apiUrl),
                         fetch('/api/stars')
                     ]);
                     const sessionsData = await sessionsRes.json();
@@ -280,28 +289,6 @@
                 }
             },
 
-            // ============ TAGGED MESSAGES ============
-            async initTagged() {
-                try {
-                    const res = await fetch('/api/tagged-messages');
-                    const data = await res.json();
-                    this.taggedMessages = data.messages || [];
-                } catch (err) {
-                    console.error('Failed to load tagged messages:', err);
-                } finally {
-                    this.loadingTagged = false;
-                }
-            },
-
-            get filteredTaggedMessages() {
-                if (!this.filterTag) return this.taggedMessages;
-                return this.taggedMessages.filter(m => m.tag === this.filterTag);
-            },
-
-            getTagMessageCount(tagId) {
-                return this.taggedMessages.filter(m => m.tag === tagId).length;
-            },
-
             getTagLabel(tagId) {
                 const tag = this.tags.find(t => t.id === tagId);
                 return tag ? tag.label : tagId;
@@ -396,6 +383,37 @@
                 localStorage.setItem('darkMode', this.darkMode);
             },
 
+            // ============ REFRESH ============
+            async refreshData() {
+                this.refreshing = true;
+                try {
+                    if (PAGE_CONTEXT.currentPage === 'sessions') {
+                        await this.initSessions();
+                    } else if (PAGE_CONTEXT.currentPage === 'session') {
+                        await this.initSession();
+                    }
+                    await this.loadTags();
+                } finally {
+                    this.refreshing = false;
+                }
+            },
+
+            // ============ SEARCH ============
+            handleSearch() {
+                localStorage.setItem('chronicle_search', this.search);
+
+                // Debounce: wait 300ms after user stops typing
+                if (this.searchTimeout) {
+                    clearTimeout(this.searchTimeout);
+                }
+
+                this.searchTimeout = setTimeout(() => {
+                    if (PAGE_CONTEXT.currentPage === 'sessions') {
+                        this.initSessions();
+                    }
+                }, 300);
+            },
+
             // ============ TAGS CRUD ============
             async addTag() {
                 if (!this.newTagLabel.trim()) return;
@@ -449,10 +467,6 @@
                 this.editingTagLabel = '';
             },
 
-            goToTaggedMessages(tagId) {
-                window.location.href = '/tagged?tag=' + tagId;
-            },
-
             // ============ PROJECTS FILTER ============
             toggleProject(project) {
                 const idx = this.selectedProjects.indexOf(project);
@@ -482,15 +496,36 @@
 
             isToolSelected(toolId) { return this.selectedTools.includes(toolId); },
 
+            clearTools() {
+                this.selectedTools = [];
+                localStorage.setItem('chronicle_tools', '[]');
+            },
+
+            // ============ TAGS FILTER ============
+            toggleTagFilter(tagId) {
+                const idx = this.selectedTags.indexOf(tagId);
+                if (idx === -1) { this.selectedTags.push(tagId); }
+                else { this.selectedTags.splice(idx, 1); }
+                localStorage.setItem('chronicle_tags', JSON.stringify(this.selectedTags));
+            },
+
+            isTagFilterSelected(tagId) { return this.selectedTags.includes(tagId); },
+
+            clearTags() {
+                this.selectedTags = [];
+                localStorage.setItem('chronicle_tags', '[]');
+            },
+
             // ============ SESSION VISIBILITY ============
+            // Note: Search is now handled server-side via API (FTS5)
             isSessionVisible(project, summary, sessionId, date, tool) {
                 const matchesTool = this.selectedTools.length === 0 || this.selectedTools.includes(tool || 'claude');
                 const matchesProject = this.selectedProjects.length === 0 || this.selectedProjects.includes(project);
                 const matchesDate = this.isDateInRange(date);
-                const matchesSearch = this.search === '' ||
-                    (summary && summary.toLowerCase().includes(this.search.toLowerCase())) ||
-                    (project && project.toLowerCase().includes(this.search.toLowerCase()));
-                return matchesTool && matchesProject && matchesDate && matchesSearch;
+                // Check if session has any of the selected tags
+                const matchesTags = this.selectedTags.length === 0 ||
+                    (this.sessionTags[sessionId] && this.selectedTags.some(t => this.sessionTags[sessionId].has(t)));
+                return matchesTool && matchesProject && matchesDate && matchesTags;
             },
 
             // ============ MESSAGE TAGS (SESSION DETAIL) ============

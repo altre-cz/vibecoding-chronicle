@@ -16,15 +16,15 @@
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                     <input type="text"
                            x-model="search"
-                           @input="localStorage.setItem('chronicle_search', search)"
-                           placeholder="Search sessions..."
+                           @input="handleSearch()"
+                           placeholder="Search in messages..."
                            class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-slate-600
                                   bg-gray-50 dark:bg-slate-700 focus:ring-2 focus:ring-primary-500
                                   focus:border-transparent outline-none transition-all">
                 </div>
             </div>
 
-            <!-- Stats & Dark Mode -->
+            <!-- Stats & Actions -->
             <div class="flex items-center gap-4">
                 <div class="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
                     <span class="font-semibold text-primary-500" x-text="totalSessions"></span> sessions
@@ -32,9 +32,18 @@
                     <span class="font-semibold text-primary-500" x-text="totalProjects"></span> projects
                 </div>
 
+                <!-- Refresh Button -->
+                <button @click="refreshData()"
+                        :disabled="refreshing"
+                        class="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-slate-700 hover:bg-gray-200
+                               dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+                        title="Refresh data">
+                    <i class="fa-solid fa-arrows-rotate" :class="refreshing ? 'animate-spin' : ''"></i>
+                </button>
+
                 <!-- Dark Mode Toggle -->
                 <button @click="toggleDarkMode()"
-                        class="p-2 rounded-lg bg-gray-100 dark:bg-slate-700 hover:bg-gray-200
+                        class="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-slate-700 hover:bg-gray-200
                                dark:hover:bg-slate-600 transition-colors">
                     <i class="fa-solid fa-sun text-yellow-500" x-show="darkMode" x-cloak></i>
                     <i class="fa-solid fa-moon text-slate-600" x-show="!darkMode"></i>

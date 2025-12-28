@@ -5,6 +5,19 @@ A beautiful, interactive explorer for AI coding assistant transcripts. Works wit
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/node-18+-green.svg)
 
+## What is this?
+
+When you use AI coding assistants like Claude Code, Codex CLI, or Gemini CLI, they save conversation logs locally on your machine. These logs contain valuable knowledge - solutions to problems, architectural decisions, debugging sessions, and lessons learned.
+
+**Vibecoding Chronicle** helps you:
+
+- **Browse & Search** - Easily find that conversation where you solved a tricky bug
+- **Organize** - Tag important messages for future reference (e.g., "Best Practice", "Troubleshooting", "Lesson Learned")
+- **Filter** - Narrow down by date, project, AI tool, or tags
+- **Learn** - Review past sessions to remember how you solved similar problems
+
+All data stays local on your machine. No cloud, no accounts, no tracking.
+
 ## Features
 
 - **Multi-Tool Support** - Import sessions from Claude Code, Codex CLI, and Gemini CLI
@@ -13,9 +26,11 @@ A beautiful, interactive explorer for AI coding assistant transcripts. Works wit
 - **Date Range Filtering** - Presets + custom range with session counts
 - **AI Tools Filter** - Filter by AI assistant with counts
 - **Project Multi-Select** - Filter by multiple projects with search
+- **Tags Filter** - Filter sessions by tagged messages
 - **Full-Text Search** - Search across all your sessions
-- **Tagging System** - Tag important messages (Troubleshooting, Best Practice, Lesson)
+- **Tagging System** - Tag important messages for later reference
 - **Tag Indicators** - See which sessions have tagged messages at a glance
+- **Refresh Button** - Manually refresh data to see new sessions
 - **Secret Masking** - Automatically redacts API keys, tokens, passwords
 - **Live Server** - Express.js server with hot reload
 - **File Watcher** - Automatically imports new sessions
@@ -31,7 +46,7 @@ A beautiful, interactive explorer for AI coding assistant transcripts. Works wit
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/vibecoding-chronicle.git
+git clone https://github.com/altre-cz/vibecoding-chronicle.git
 cd vibecoding-chronicle
 
 # Install dependencies
@@ -115,9 +130,9 @@ vibecoding-chronicle/
 │   ├── layout.ejs          # Main layout with Alpine.js app
 │   ├── pages/
 │   │   ├── sessions.ejs    # Session list page
-│   │   ├── session.ejs     # Session detail page
-│   │   └── tagged.ejs      # Tagged messages page
+│   │   └── session.ejs     # Session detail page
 │   └── partials/
+│       ├── header.ejs      # Header with search and actions
 │       └── sidebar.ejs     # Sidebar with filters
 ├── public/                  # Static assets
 ├── package.json
@@ -153,6 +168,12 @@ The following patterns are automatically redacted:
 - All data is stored locally in SQLite (`~/.vibecoding-chronicle/`)
 - No data is sent to external servers
 - Tags and preferences stored server-side
+
+### Security Note
+
+This is a **local-only tool** designed to run on your machine. It reads AI session files from your home directory (`~/.claude`, `~/.codex`, `~/.gemini`) and serves them via a web interface on `localhost:3000`.
+
+The application does not expose any remote endpoints and is not intended to be accessible from other machines on your network.
 
 ## Tech Stack
 

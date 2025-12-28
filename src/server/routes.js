@@ -19,8 +19,8 @@ import {
   createTag,
   updateTag,
   deleteTag,
-  getTaggedMessages,
-  getSessionTagCounts
+  getSessionTagCounts,
+  searchMessages
 } from '../db/index.js';
 import { maskSecrets } from '../importers/utils.js';
 import { getToolsForFrontend } from '../tools.config.js';
@@ -91,10 +91,17 @@ export function setupRoutes(app) {
         filtered = filtered.filter(s => s.started_at <= req.query.to);
       }
 
-      // Search in summary
-      if (req.query.q) {
-        const query = req.query.q.toLowerCase();
+      // Full-text search in messages + summary/project
+      if (req.query.q && req.query.q.trim().length >= 3) {
+        const query = req.query.q.trim().toLowerCase();
+
+        // Get session IDs that have matching messages (FTS)
+        const ftsResults = searchMessages(query);
+        const ftsSessionIds = new Set(ftsResults.map(r => r.session_id));
+
+        // Filter: match in messages (FTS) OR in summary/project
         filtered = filtered.filter(s =>
+          ftsSessionIds.has(s.id) ||
           s.summary?.toLowerCase().includes(query) ||
           s.project?.toLowerCase().includes(query)
         );
@@ -412,29 +419,4 @@ export function setupRoutes(app) {
   });
 
 
-  // ============ TAGGED MESSAGES ============
-
-  /**
-   * GET /api/tagged-messages
-   * Get messages with tags (for tags.html page)
-   * Optional query param: ?tag=troubleshooting
-   */
-  app.get('/api/tagged-messages', (req, res) => {
-    try {
-      const tagFilter = req.query.tag || null;
-      const messages = getTaggedMessages(tagFilter);
-
-      // Mask secrets and truncate content for preview
-      const result = messages.map(msg => ({
-        ...msg,
-        content: maskSecrets(msg.content),
-        preview: maskSecrets(msg.content)?.substring(0, 200) + (msg.content?.length > 200 ? '...' : '')
-      }));
-
-      res.json({ messages: result });
-    } catch (error) {
-      console.error('Error fetching tagged messages:', error);
-      res.status(500).json({ error: 'Failed to fetch tagged messages' });
-    }
-  });
 }

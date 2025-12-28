@@ -69,9 +69,16 @@
 
         <!-- AI Tools Filter -->
         <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
-            <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>AI Tools
-            </h2>
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>AI Tools
+                </h2>
+                <button x-show="selectedTools.length > 0"
+                        @click="clearTools()"
+                        class="text-xs text-gray-400 hover:text-primary-500">
+                    Clear (<span x-text="selectedTools.length"></span>)
+                </button>
+            </div>
 
             <nav class="space-y-1">
                 <template x-for="tool in availableTools" :key="tool.id">
@@ -95,22 +102,34 @@
                 <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     <i class="fa-solid fa-tags mr-2"></i>Tags
                 </h2>
+                <button x-show="selectedTags.length > 0"
+                        @click="clearTags()"
+                        class="text-xs text-gray-400 hover:text-primary-500">
+                    Clear (<span x-text="selectedTags.length"></span>)
+                </button>
             </div>
 
             <!-- Tags List -->
             <nav class="space-y-1">
                 <template x-for="tag in tags" :key="tag.id">
-                    <div class="group flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-slate-700">
-                        <!-- Editable label -->
+                    <div class="group flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm cursor-pointer transition-colors"
+                         :class="isTagFilterSelected(tag.id) ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' : 'hover:bg-gray-50 dark:hover:bg-slate-700'">
+                        <!-- Checkbox + Label -->
                         <template x-if="editingTagId !== tag.id">
-                            <span class="flex-1 truncate" x-text="tag.label" @click="goToTaggedMessages(tag.id)"></span>
+                            <label class="flex items-center gap-2 flex-1 cursor-pointer">
+                                <input type="checkbox"
+                                       :checked="isTagFilterSelected(tag.id)"
+                                       @change="toggleTagFilter(tag.id)"
+                                       class="rounded border-gray-300 dark:border-slate-600 text-primary-500 focus:ring-primary-500">
+                                <span class="truncate" x-text="tag.label"></span>
+                            </label>
                         </template>
                         <template x-if="editingTagId === tag.id">
                             <input type="text" x-model="editingTagLabel" @blur="saveTagEdit(tag.id)" @keydown.enter="saveTagEdit(tag.id)" @keydown.escape="cancelTagEdit()"
                                    class="flex-1 px-1 py-0.5 text-sm border border-primary-300 rounded bg-white dark:bg-slate-800 focus:outline-none"
                                    x-ref="tagInput">
                         </template>
-                        <!-- Edit/Delete on hover (fixed width) -->
+                        <!-- Edit/Delete on hover -->
                         <div class="w-8 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity" @click.stop>
                             <button @click="startTagEdit(tag)" class="p-0.5 text-gray-400 hover:text-primary-500">
                                 <i class="fa-solid fa-pen text-xs"></i>
@@ -119,7 +138,7 @@
                                 <i class="fa-solid fa-trash text-xs"></i>
                             </button>
                         </div>
-                        <span class="text-xs bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 rounded-full min-w-[1.5rem] text-center" x-text="tag.count" @click="goToTaggedMessages(tag.id)"></span>
+                        <span class="text-xs bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 rounded-full min-w-[1.5rem] text-center" x-text="tag.count"></span>
                     </div>
                 </template>
 
@@ -134,12 +153,6 @@
                     </button>
                 </div>
             </nav>
-
-            <!-- View all tagged -->
-            <a href="/tagged"
-               class="mt-2 block w-full text-xs text-center text-gray-400 hover:text-primary-500 py-1">
-                View all tagged messages
-            </a>
         </div>
 
         <!-- Projects Filter -->
